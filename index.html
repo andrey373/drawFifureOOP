@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+            font: 21px Helvetica;
+            user-select: none;
+        }
+
+        p{
+            margin: 0;
+        }
+
+        #myCanvas {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .shapes,
+        .control{
+            position: absolute;
+            right: 0;
+            top: 20px;
+            border: 1px solid rgb(139, 195, 254);
+            border-radius: 5px 0 0 5px;
+            border-right: none;
+            padding: 10px;
+            background: rgba(139, 195, 254, 0.7);
+        }
+
+        .control{
+            top: 170px;
+        }
+
+        .color_input,
+        .resize_input{
+            width: 100%;
+            display: block;
+            text-align: right;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+        }
+
+        .resize_input{
+            margin-bottom: 0;
+            text-align: left;
+        }
+
+        .input_range{
+            width: 100%;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .shape,
+        .color_input,
+        .resize_input{
+            display: block;
+            border-bottom: 1px dashed #1280f2;
+            color: #1280f2;
+            cursor: pointer;
+        }
+        
+        .text{
+            color: #1280f2;
+            text-align: center;
+        }
+
+        .shape ~ .shape {
+            margin-top: 5px;
+        }
+
+        .shape:hover {
+            color: #555;
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas"></canvas>
+
+<div class="shapes">
+    <div class="shape" data-shape="circle">circle</div>
+    <div class="shape" data-shape="quad">quad</div>
+    <div class="shape" data-shape="triangle">triangle</div>
+</div>
+
+<div class="control">
+    <label class="color_input">choice of fill color
+        <input class="color_input_fill" type="color" name="color-fill">
+    </label>
+    <label class="color_input">choice of border color
+        <input class="color_input_border" type="color" name="color-border">
+    </label>
+    <div>
+        <label class="resize_input">resize the shape
+            <input class="input_range" type="range" value="100" min="50" max="150" step="10">
+        </label>
+        <p class="text">or</p>
+        <p class="text">scroll wheel of mouse</p>
+    </div>
+</div>
+    
+    <script src="./app.js"></script>
+    <script src="./shape.js"></script>
+    <script>
+        let canvasNode = document.querySelector('#myCanvas');
+        // создаем экземпляр канваса
+        const appCanvas = new App(canvasNode);
+
+        const objNameFigure = {// обьект количество фигур
+            circle: Circle,
+            quad: Quad,
+            triangle: Triangle
+        };
+
+
+        let inputRange = document.querySelector('.input_range');
+        let controlColorFill = '#1133df';// цвет заливки
+        let controlColorBorder = '#1abc35';// цвет рамки
+        let controlRange = 100;// размер фигуры
+        
+        // отслеживаем координаты мыши 
+        canvasNode.addEventListener('mousemove', (evt) => {
+            if(appCanvas.figureElt){
+                // присваиваем фигуре координаты 
+                appCanvas.figureElt.setPosition(evt.clientX, evt.clientY);
+            }
+        })
+
+        
+        document.addEventListener('input', (evt) => {
+            if(evt.target.getAttribute('class') === 'color_input_fill'){
+                // меняем цвет заливки
+                controlColorFill = evt.target.value;
+                if(appCanvas.figureElt){
+                    appCanvas.figureElt.setFillColor(controlColorFill);
+                }
+            }
+            if(evt.target.getAttribute('class') === 'color_input_border'){
+                // меняем цвет рамки
+                controlColorBorder = evt.target.value;
+                if(appCanvas.figureElt){
+                    appCanvas.figureElt.setStrokeColor(controlColorBorder);
+                }
+            }
+            if(evt.target.getAttribute('class') === 'input_range'){
+                // меняем размер фигуры через input
+                controlRange = evt.target.value;
+                if(appCanvas.figureElt){
+                    appCanvas.figureElt.setFigureWidth(controlRange);
+                }
+            }
+        })
+
+        // событие добавление фигуры в канвас при клике
+        canvasNode.addEventListener('click', (evt) => {
+            if(appCanvas.figureElt){
+                let classFigure = appCanvas.figureElt.constructor;
+                // создаем новую фигуру уже после того как отрисовали фигуру в канвасе при клике
+                let shape = createFigure(classFigure, evt.clientX, evt.clientY);
+
+                // добавляем фигуру в массив
+                appCanvas.addFigure(appCanvas.figureElt);
+                // отрисовуем новую фигуру
+                appCanvas.drawFigure(shape);
+            }
+        })
+
+        document.addEventListener('keydown', (evt) => {
+            if(evt.keyCode === 27){
+                // открепляем отрисованую фигуру от мышки
+                appCanvas.drawFigure(null);
+            }
+        });
+
+        canvasNode.addEventListener('wheel', (evt) => {
+            if(appCanvas.figureElt){
+                if(evt.deltaY > 0){
+                    controlRange = appCanvas.figureElt.figureWidth + 10;
+                    // меняем размер фигуры при прокрутке колесика
+                    appCanvas.figureElt.setFigureWidth(controlRange);
+                    inputRange.value = controlRange;
+                }else{
+                    controlRange = appCanvas.figureElt.figureWidth - 10;
+                    // меняем размер фигуры при прокрутке колесика
+                    appCanvas.figureElt.setFigureWidth(controlRange);
+                    inputRange.value = controlRange;
+                }
+            }
+        })
+
+        document.addEventListener('click', (evt) => {
+            let {shape: nameFigure} = evt.target.dataset;// деструктурирующие присваивание
+
+            if(objNameFigure.hasOwnProperty(nameFigure)){// проверяем есть ли в обьекте нужное свойство
+                let propertyValue = objNameFigure[nameFigure];// присваиваем нужное значение
+                let newFigure = createFigure(propertyValue);// создаем новую фигуру
+
+                appCanvas.drawFigure(newFigure);// присваиваем фигуру в свойство 
+            }
+        })
+
+        function createFigure(component, coordinateX, coordinateY){
+            // создаем новый экземпляр фигуры
+            let figureInit = new component(coordinateX, coordinateY);
+
+            figureInit.setStrokeColor(controlColorBorder);// присвоение цвета границы
+            figureInit.setFillColor(controlColorFill);// присвоение цвета заливки
+            figureInit.setFigureWidth(controlRange);// присвоение размера фигуры
+
+            return figureInit;
+        }
+
+
+        // делаем размеры канваса равным размеров окна браузера
+        window.addEventListener('load', onResize);
+        window.addEventListener('resize', onResize);
+        function onResize (evt) {
+            canvasNode.width = evt.currentTarget.innerWidth;
+            canvasNode.height = evt.currentTarget.innerHeight;
+        }
+        
+    </script>
+</body>
+</html>
